@@ -232,7 +232,7 @@ if option == "Today's Check-in":
                     st.session_state.show_balloons = True
                     st.success("✅ Today's check-in saved!")
                     data = load_data()
-                    st.experimental_rerun()
+                    st.rerun()
         else:
             st.info("✅ You have already submitted today's check-in.")
 
