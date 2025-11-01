@@ -39,33 +39,25 @@ def load_data():
             "mood", "wellness_score", "tip", "journal"
         ])
 
-    # --- Fix: Ensure valid datetime values ---
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
     else:
         df["date"] = pd.NaT
 
-    # Drop invalid date rows if any
     df = df.dropna(subset=["date"])
-
-    # Reformat date in ISO (YYYY-MM-DD)
     df["date"] = df["date"].dt.date.astype(str)
 
-    # Convert numeric columns
     for col in ["sleep_hours", "screen_time", "stress_level", "wellness_score"]:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
-    # Clean up missing text columns
     for col in ["username", "mood", "tip", "journal"]:
         if col not in df.columns:
             df[col] = ""
         else:
             df[col] = df[col].fillna("")
 
-    # Remove duplicates per user/date
     df = df.drop_duplicates(subset=["username", "date"], keep="last")
-
     return df
 
 def save_entry(entry):
@@ -146,6 +138,8 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "page" not in st.session_state:
     st.session_state.page = "login"
+if "show_balloons" not in st.session_state:
+    st.session_state.show_balloons = False
 
 # ---------- LOGIN PAGE ----------
 if not st.session_state.logged_in:
@@ -173,6 +167,14 @@ if not st.session_state.logged_in:
 username = st.session_state.username
 date_input = st.session_state.date_input
 data = load_data()
+
+# 🎈 Show balloons if flag was set last run
+if st.session_state.get("show_balloons", False):
+    try:
+        st.balloons()
+    except Exception:
+        pass
+    st.session_state.show_balloons = False
 
 if "dashboard_page" not in st.session_state:
     st.session_state.dashboard_page = "Today's Check-in"
@@ -227,10 +229,10 @@ if option == "Today's Check-in":
                 success = save_entry(entry)
                 if success:
                     st.session_state[checkin_key] = True
+                    st.session_state.show_balloons = True
                     st.success("✅ Today's check-in saved!")
-                    st.balloons()
                     data = load_data()
-                    st.rerun()
+                    st.experimental_rerun()
         else:
             st.info("✅ You have already submitted today's check-in.")
 
