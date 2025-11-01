@@ -31,8 +31,6 @@ def load_data():
         df = pd.read_csv(DATA_FILE)
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.normalize()
-
-    # ensure expected columns exist
     expected = ["username","date","sleep_hours","screen_time","stress_level","mood","wellness_score","tip","journal"]
     for c in expected:
         if c not in df.columns:
@@ -44,10 +42,14 @@ def save_data(df):
         df.to_csv(DATA_FILE, index=False)
 
 def save_entry(entry):
+    """
+    Returns:
+      - True if saved (new)
+      - False if an entry for that user/date already exists (not overwritten)
+    """
     df = load_data()
     exists = ((df["username"] == entry["username"]) & (df["date"] == entry["date"])).any()
     if exists:
-        # return False to caller so it can show the appropriate message
         return False
     df = pd.concat([df, pd.DataFrame([entry])], ignore_index=True)
     save_data(df)
@@ -75,9 +77,9 @@ def generate_tip(sleep, screen, stress, mood):
 
 def render_card(title, value, color="#4CAF50", emoji=""):
     st.markdown(f"""
-    <div style='background-color:{color}; padding:14px; border-radius:12px; text-align:center;'>    
-    <h4 style='color:white; margin:0;'>{emoji} {title}</h4>    
-    <p style='font-size:24px; font-weight:bold; color:white; margin:6px 0 0 0;'>{value}</p>    
+    <div style='background-color:{color}; padding:12px; border-radius:10px; text-align:center;'>    
+      <h4 style='color:white; margin:0;'>{emoji} {title}</h4>    
+      <p style='font-size:20px; font-weight:bold; color:white; margin:6px 0 0 0;'>{value}</p>    
     </div>    
     """, unsafe_allow_html=True)
 
@@ -170,20 +172,23 @@ if not st.session_state.logged_in:
         "<div style='background-color:#fff3e0; padding:40px; border-radius:12px; text-align:center;'><h1 style='color:#FF4500;margin:0;'>👤 Digital Wellness Login</h1><p>Enter your name and choose date to continue.</p></div>",
         unsafe_allow_html=True
     )
-    # vertical layout: name then date (date below name)
     name = st.text_input("Your name:", max_chars=30, placeholder="e.g., thejashree")
+    # date BELOW name (vertical layout)
     date_sel = st.date_input("Date:", value=datetime.now().date())
+
     if st.button("Continue"):
         if name and name.strip():
+            # set new session values (fresh)
             st.session_state.logged_in = True
             st.session_state.username = name.strip()
             st.session_state.date_input = pd.Timestamp(date_sel).normalize()
             st.session_state.page = "Today's Check-in"
-            # use st.rerun() to refresh UI immediately (safe replacement for experimental_rerun)
+            st.session_state.checkin_done = False
             st.rerun()
         else:
             st.error("Please enter your name.")
-            st.stop()
+    # stop rendering the rest until logged in
+    st.stop()
 
 # ---------- MAIN ----------
 check_inactivity()
@@ -197,8 +202,12 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# menu (single-click)
-option = st.selectbox("Choose an option:", ["Today's Check-in","Weekly Overview","Leaderboard","View Past Entries","Clear My Past Entries","Edit / Delete Entries","Switch Account","Exit App"], key="menu_option")
+# menu
+option = st.selectbox(
+    "Choose an option:",
+    ["Today's Check-in","Weekly Overview","Leaderboard","View Past Entries","Clear My Past Entries","Edit / Delete Entries","Switch Account","Exit App"],
+    key="menu_option"
+)
 st.session_state.page = option
 check_inactivity()
 
@@ -216,7 +225,6 @@ if st.session_state.page == "Today's Check-in":
         st.markdown("- Screen: ≤3 hrs")
         st.markdown("- Stress: ≤4")
     with right:
-        # show form controls unless user already submitted
         if today_entry.empty and not st.session_state.checkin_done:
             sleep_hours = st.number_input("Sleep Hours (0-12)", min_value=0, max_value=12, value=8, step=1)
             screen_time = st.number_input("Screen Time (hrs, 0-24)", min_value=0, max_value=24, value=3, step=1)
@@ -240,18 +248,37 @@ if st.session_state.page == "Today's Check-in":
                 }
                 ok = save_entry(entry)
                 if ok:
-                    st.balloons()        # immediate balloons
-                    play_beep()          # immediate short beep sound
+                    # saved new entry
+                    st.balloons()
+                    play_beep()
                     st.success("✅ Today's check-in saved!")
-                    # mark done and show analysis immediately without forcing a rerun
                     st.session_state.checkin_done = True
-                    # reload local variables so analysis below can pick up the new entry
+                    # reload local values to show analysis immediately
                     data = load_data()
                     today_entry = data[(data["username"] == username) & (data["date"] == today_ts)]
                 else:
-                    st.info("✅ Already submitted for this date — showing analysis below.")
+                    # duplicate: show friendly info + existing entry details + balloons
+                    st.warning("⚠ You've already submitted an entry for this date. Showing your previous submission below.")
+                    st.balloons()
+                    # fetch existing entry and show details
+                    data = load_data()
+                    existing = data[(data["username"] == username) & (data["date"] == today_ts)].sort_values("date").iloc[-1]
+                    # show small card summary
+                    st.markdown("*Your existing entry for this date:*")
+                    c1,c2,c3,c4 = st.columns(4)
+                    with c1:
+                        render_card("Stress", existing["stress_level"], color="#FF4B4B", emoji="😣")
+                    with c2:
+                        render_card("Screen", existing["screen_time"], color="#FFA500", emoji="📱")
+                    with c3:
+                        render_card("Sleep", existing["sleep_hours"], color="#1E90FF", emoji="🛌")
+                    with c4:
+                        render_card("Score", existing["wellness_score"], color="#4CAF50", emoji="🌿")
+                    st.markdown(f"*Tip:* {existing.get('tip','')}")
+                    if existing.get("journal",""):
+                        st.markdown(f"*Journal:* {existing.get('journal','')}")
 
-        # Show analysis if exists (either just submitted or previously present)
+        # Show analysis if exists (either newly submitted or previously present)
         data = load_data()
         today_entry = data[(data["username"] == username) & (data["date"] == today_ts)]
         if not today_entry.empty:
@@ -342,49 +369,101 @@ elif st.session_state.page == "Leaderboard":
             df_rank = df_rank.sort_values("wellness_score", ascending=False).reset_index(drop=True)
             df_rank["Rank"] = df_rank.index + 1
             df_rank["Medal"] = df_rank["Rank"].apply(lambda r: ["🥇","🥈","🥉"][r-1] if r<=3 else "")
-            for _, row in df_rank.head(10).iterrows():
+            for _, row in df_rank.head(20).iterrows():
                 rc = "gold" if row["Rank"]==1 else ("silver" if row["Rank"]==2 else ("#cd7f32" if row["Rank"]==3 else "white"))
-                st.markdown(f"<div style='background:#1a1a1a; padding:10px; border-radius:8px; margin-bottom:6px;'><h4 style='color:red;margin:0;'>Rank: <span style='color:{rc}; font-weight:bold'>{row['Rank']}</span> {row['Medal']}</h4><p style='color:white;margin:2px 0;'>User: {row['username']} | Score: {row['wellness_score']:.1f}</p></div>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<div style='background:#111; padding:12px; border-radius:10px; margin-bottom:8px; color:white;'>"
+                    f"<h4 style='margin:0;'>Rank: <span style='color:{rc}; font-weight:bold'>{row['Rank']}</span> {row['Medal']}</h4>"
+                    f"<p style='margin:4px 0 0 0;'>User: {row['username']} | Score: {row['wellness_score']:.1f}</p>"
+                    "</div>",
+                    unsafe_allow_html=True
+                )
+
 
 # ---------------- View Past Entries ----------------
 elif st.session_state.page == "View Past Entries":
-    st.header("📜 Past Entries")
+    st.header("📜 Past Entries (card view)")
     data = load_data()
     if data.empty:
         st.info("No entries.")
     else:
-        # selection: All Users or specific user
         users = ["All Users"] + sorted(data["username"].dropna().unique().tolist())
         sel = st.selectbox("Filter by user:", users, index=users.index(username) if username in users else 0)
-
-        # period filter like leaderboard (All / Daily / Weekly)
         period = st.selectbox("Period:", ["All","Daily","Weekly"], index=0, key="past_period")
         if sel == "All Users":
             display = data.copy()
         else:
             display = data[data["username"] == sel].copy()
-
         today = pd.Timestamp(datetime.now().date())
         if period == "Daily":
             display = display[display["date"] == today]
         elif period == "Weekly":
             week_ago = today - pd.Timedelta(days=6)
             display = display[(display["date"] >= week_ago) & (display["date"] <= today)]
+        display = display.sort_values(["wellness_score"], ascending=False).reset_index(drop=True)
 
-        display = display.sort_values(["username","date"], ascending=[True,False]).reset_index(drop=True)
-        st.dataframe(display, use_container_width=True)
+        # render each row as a dark card (leaderboard-like)
+        for _, r in display.iterrows():
+            uname = r.get("username", "")
+            dstr = pd.to_datetime(r.get("date")).strftime("%b %d, %Y")
+            score = r.get("wellness_score", "")
+            stress = r.get("stress_level", "")
+            screen = r.get("screen_time", "")
+            sleep = r.get("sleep_hours", "")
+            mood = r.get("mood", "")
+            tip = r.get("tip", "")
+            journal = r.get("journal", "")
+
+            st.markdown(
+                f"<div style='background:#0b0b0b; color:white; padding:12px; border-radius:10px; margin-bottom:10px;'>"
+                f"<div style='display:flex; justify-content:space-between; align-items:center;'>"
+                f"<div><strong style='font-size:16px'>{uname}</strong><div style='font-size:12px; color:#bdbdbd'>{dstr}</div></div>"
+                f"<div style='text-align:right;'><div style='font-size:20px; font-weight:bold; color:#ffd700'>{score}</div><div style='font-size:12px; color:#bdbdbd'>Score</div></div>"
+                f"</div>"
+                f"<div style='margin-top:8px; display:flex; gap:8px;'>"
+                f"<div style='background:#111; padding:8px; border-radius:8px; min-width:80px; text-align:center;'>Stress<br><strong>{stress}</strong></div>"
+                f"<div style='background:#111; padding:8px; border-radius:8px; min-width:80px; text-align:center;'>Screen<br><strong>{screen}h</strong></div>"
+                f"<div style='background:#111; padding:8px; border-radius:8px; min-width:80px; text-align:center;'>Sleep<br><strong>{sleep}h</strong></div>"
+                f"<div style='background:#111; padding:8px; border-radius:8px; min-width:80px; text-align:center;'>Mood<br><strong>{mood}</strong></div>"
+                f"</div>"
+                f"<div style='margin-top:8px; color:#e0e0e0; font-size:13px;'>Tip: {tip if tip else '—'}</div>"
+                f"{('<div style=\\'margin-top:6px; color:#cfcfcf; font-size:13px;\\'>Journal: '+str(journal)+'</div>') if str(journal).strip() else ''}"
+                f"</div>",
+                unsafe_allow_html=True
+            )
 
 # --------------- Clear My Past Entries ---------------
 elif st.session_state.page == "Clear My Past Entries":
     st.header("🧹 Clear My Past Entries")
-    if st.button("⚠ Delete only my entries"):
-        df_all = load_data()
-        before = df_all.shape[0]
-        df_all = df_all[df_all["username"] != username]
-        save_data(df_all)
-        after = df_all.shape[0]
-        st.success(f"Deleted {before-after} entries for '{username}'.")
-        st.rerun()
+    # Two-step confirmation flow
+    if "confirm_delete" not in st.session_state:
+        st.session_state.confirm_delete = False
+
+    if not st.session_state.confirm_delete:
+        if st.button("⚠ Delete only my entries"):
+            st.session_state.confirm_delete = True
+            st.experimental_rerun()  # show confirmation UI immediately
+    else:
+        st.warning("Are you sure? This will permanently delete ALL entries for your username.")
+        c1, c2 = st.columns([1,1])
+        with c1:
+            if st.button("Yes — Delete my entries"):
+                df_all = load_data()
+                before = df_all.shape[0]
+                df_all = df_all[df_all["username"] != username]
+                save_data(df_all)
+                after = df_all.shape[0]
+                deleted = before - after
+                st.success(f"Deleted {deleted} entries for '{username}'.")
+                st.balloons()
+                # reset confirmation flag and trigger fresh UI
+                st.session_state.confirm_delete = False
+                st.rerun()
+        with c2:
+            if st.button("Cancel"):
+                st.session_state.confirm_delete = False
+                st.info("Deletion canceled.")
+                st.rerun()
 
 # --------------- Edit / Delete Entries ---------------
 elif st.session_state.page == "Edit / Delete Entries":
@@ -407,8 +486,15 @@ elif st.session_state.page == "Edit / Delete Entries":
 
 # ----------- Switch Account / Exit -----------
 elif st.session_state.page == "Switch Account":
+    # clear session fully so next user gets a clean start
     for k in list(st.session_state.keys()):
         del st.session_state[k]
+    # reinitialize defaults then rerun (ensures login page is shown)
+    st.session_state.logged_in = False
+    st.session_state.username = None
+    st.session_state.date_input = pd.Timestamp(datetime.now().date()).normalize()
+    st.session_state.page = "Today's Check-in"
+    st.session_state.checkin_done = False
     st.rerun()
 
 elif st.session_state.page == "Exit App":
