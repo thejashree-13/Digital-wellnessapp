@@ -1,0 +1,42 @@
+date,sleep_hours,screen_time,stress_level,mood,wellness_score,tip,journal,goal_sleep,goal_screen,username
+2025-10-19 11:20:59.114782,6.0,4.0,7,Good,65,Sleep is okay — try to keep it consistent. Low screen time — good job! Stress is high. Try breathing exercises or a short walk.,i had my test today,8.0,3.0,
+,6.5,4.0,3,Good,80,Sleep is okay — try to keep it consistent. Low screen time — good job! Low stress — keep doing what works for you!,i had my test today,8.0,3.0,
+,7.25,3.75,1,Good,90,Sleep okay — try to keep it consistent. ✅ Low screen time — good job! ✅ Low stress — keep it up!,,8.0,3.0,yuva
+,7.0,4.0,2,Good,85,,i had my test today,8.0,3.0,thejashree
+,7.0,4.0,3,Good,82,,,8.0,3.0,sreee
+2025-10-20 00:00:00.000000,7.0,4.0,2,Good,85,,,8.0,3.0,thejashree
+2025-10-21 00:00:00.000000,7.0,4.0,2,Good,85,,,8.0,3.0,thejashree
+2025-10-19 00:00:00.000000,7.0,4.0,2,Good,85,,,8.0,3.0,Bhavani
+2025-10-20 00:00:00.000000,7.0,4.0,1,Good,88,,i had my eng test today,8.0,3.0,Bhavani
+2025-10-19 00:00:00.000000,7.0,4.0,2,Good,85,,,8.0,3.0,Dharshini
+2025-10-20 00:00:00.000000,5.0,6.0,5,Good,60,🛌 Sleep low! Try 7–8h. ,,8.0,3.0,Dharshini
+2025-10-21 00:00:00.000000,7.0,4.0,2,Good,85,,,8.0,3.0,Thejashree
+2025-10-19 00:00:00.000000,7.0,4.0,3,Good,82,,,8.0,3.0,Thejashree
+2025-10-22 00:00:00.000000,7.0,4.0,3,Good,82,,,8.0,3.0,Thejashree
+2025-10-23 00:00:00.000000,7.0,4.0,2,Good,85,,i had a bad day,,,Thejashree
+2025-10-19 00:00:00.000000,7.0,2.0,7,Good,74,😣 Stress high! Relax. ,,,,siva
+2025-10-24 00:00:00.000000,5.0,8.0,5,Stressed,53,🛌 Sleep low! Try 7–8h. ,,,,Thejashree
+2025-10-25 00:00:00.000000,3.0,7.0,8,Tired,37,🛌 Sleep low! Try 7–8h. 😣 Stress high! Relax. 💤 Consider a short nap. ⚠ Warning: Continuing like this may reduce lifespan! ,,,,Thejashree
+2025-10-30 00:00:00.000000,5.0,8.0,2,Okay,62,🛌 Sleep low! Try 7–8h. ,,,,Thejashree
+2025-10-21 00:00:00.000000,8.0,10.0,4,Tired,64,📱 Screen high! Reduce. 💤 Consider a short nap. ,,,,yuva
+2025-10-30 00:00:00.000000,7.0,4.0,2,Good,85,,,,,yuva
+2025-10-22 00:00:00.000000,10.0,8.0,2,Anxious,77,,,,,siva
+2025-10-19 00:00:00.000000,7.0,4.0,2,Good,85,,,,,dharshi
+2025-10-23 00:00:00.000000,7.0,7.0,1,Good,78,,,,,sree
+2025-10-29 00:00:00.000000,7.0,4.0,3,Good,82,,,,,Thejashree
+2025-10-14 00:00:00.000000,7.0,4.0,3,Good,82,,,,,thejashree
+2025-10-19 00:00:00.000000,7.0,4.0,2,Good,85,,,,,Jayashree
+2025-10-14 00:00:00.000000,10.0,4.0,2,Tired,90,💤 Take a short nap. ,,,,Jayashree
+2025-10-19 00:00:00.000000,7.0,4.0,3,Good,82,,,,,thhh
+2025-10-19 00:00:00.000000,10.0,4.0,3,Good,87,,,,,Yuvasri
+2025-10-19 00:00:00.000000,7.0,4.0,1,Good,88,,,,,yuvasri
+2025-10-19 00:00:00.000000,7.0,10.0,1,Good,68,📱 Too much screen time! Reduce it. ,,,,Jayash
+2025-10-27 00:00:00.000000,7.0,3.0,5,Happy,80,,,,,Thejashree
+2025-10-19 00:00:00.000000,7.45,6.0,1,Tired,84,💤 Take a power nap. ,,,,theja
+2025-10-25 00:00:00.000000,8.0,3.0,5,Happy,85,,,,,yuvasri
+2025-10-16 00:00:00.000000,8.0,3.0,5,Happy,85,,,,,thejashree
+2025-10-14 00:00:00.000000,8.0,3.0,5,Happy,85,,,,,bhavsni
+2025-10-08 00:00:00.000000,8.0,3.0,5,Happy,85,,,,,Shruthika
+2025-10-08 00:00:00.000000,8.0,3.0,2,Sad,94,,,,,rithika
+2025-10-09 00:00:00.000000,6.0,4.0,5,Anxious,71,,,,,thejashree
+2025-10-10 00:00:00.000000,7.0,2.0,4,Tired,83,💤 Take a power nap. ,i had my exam today,,,thejashree
