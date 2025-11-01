@@ -427,8 +427,7 @@ elif st.session_state.page == "View Past Entries":
                 f"<div style='background:#111; padding:8px; border-radius:8px; min-width:80px; text-align:center;'>Mood<br><strong>{mood}</strong></div>"
                 f"</div>"
                 f"<div style='margin-top:8px; color:#e0e0e0; font-size:13px;'>Tip: {tip if tip else '—'}</div>"
-                f"{('<div style=\\'margin-top:6px; color:#cfcfcf; font-size:13px;\\'>Journal: '+str(journal)+'</div>') if str(journal).strip() else ''}"
-                f"</div>",
+                f"{'<div style=\"margin-top:6px; color:#cfcfcf; font-size:13px;\">Journal: '+str(journal)+'</div>' if str(journal).strip() else ''}</div>"
                 unsafe_allow_html=True
             )
 
