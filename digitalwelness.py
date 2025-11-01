@@ -210,33 +210,83 @@ option = st.selectbox(
 )
 st.session_state.page = option
 check_inactivity()
+# ======================================================================
+# -------------------- PAGE HANDLER: WELLNESS APP -----------------------
+# ======================================================================
 
-# ---------------- Today's Check-in ----------------
+# ---------- TODAY'S CHECK-IN ----------
 if st.session_state.page == "Today's Check-in":
-    today_ts = pd.Timestamp(date_input).normalize()
-    data = load_data()
-    df_user = data[data["username"] == username].sort_values("date")
-    today_entry = data[(data["username"] == username) & (data["date"] == today_ts)]
 
-    left, right = st.columns([1,3])
+    today_ts = pd.Timestamp(st.session_state.date_input).normalize()
+    data = load_data()
+    df_user = data[data["username"] == st.session_state.username].sort_values("date")
+    today_entry = data[(data["username"] == st.session_state.username) & (data["date"] == today_ts)]
+
+    left, right = st.columns([1, 3])
     with left:
         st.markdown("### 🎯 Targets")
         st.markdown("- Sleep: 8 hrs")
         st.markdown("- Screen: ≤3 hrs")
         st.markdown("- Stress: ≤4")
+
     with right:
-        if today_entry.empty and not st.session_state.checkin_done:
+        # ----- Check if today's entry already exists -----
+        if not today_entry.empty:
+            st.success("🎉 You have already submitted your entry for this date!")
+            st.balloons()
+            row = today_entry.iloc[-1]
+
+            journal_html = ""
+            if str(row.get("journal", "")).strip():
+                journal_html = f"<div style='margin-top:6px; color:#cfcfcf; font-size:13px;'>Journal: {row.get('journal')}</div>"
+
+            html = f"""
+            <div style='background:#0b0b0b; color:white; padding:12px; border-radius:10px; margin-bottom:10px;'>
+              <div style='display:flex; justify-content:space-between; align-items:center;'>
+                <div>
+                  <strong style='font-size:16px'>{row.get('username')}</strong>
+                  <div style='font-size:12px; color:#bdbdbd'>{pd.to_datetime(row.get('date')).strftime('%b %d, %Y')}</div>
+                </div>
+                <div style='text-align:right;'>
+                  <div style='font-size:20px; font-weight:bold; color:#ffd700'>{row.get('wellness_score')}</div>
+                  <div style='font-size:12px; color:#bdbdbd'>Score</div>
+                </div>
+              </div>
+
+              <div style='margin-top:8px; display:flex; gap:8px;'>
+                <div style='background:#111; padding:8px; border-radius:8px; min-width:80px; text-align:center;'>
+                  Stress<br><strong>{row.get('stress_level')}</strong>
+                </div>
+                <div style='background:#111; padding:8px; border-radius:8px; min-width:80px; text-align:center;'>
+                  Screen<br><strong>{row.get('screen_time')}h</strong>
+                </div>
+                <div style='background:#111; padding:8px; border-radius:8px; min-width:80px; text-align:center;'>
+                  Sleep<br><strong>{row.get('sleep_hours')}h</strong>
+                </div>
+                <div style='background:#111; padding:8px; border-radius:8px; min-width:80px; text-align:center;'>
+                  Mood<br><strong>{row.get('mood')}</strong>
+                </div>
+              </div>
+
+              <div style='margin-top:8px; color:#e0e0e0; font-size:13px;'>Tip: {row.get('tip','—')}</div>
+              {journal_html}
+            </div>
+            """
+            st.markdown(html, unsafe_allow_html=True)
+
+        # ----- New entry submission form -----
+        else:
             sleep_hours = st.number_input("Sleep Hours (0-12)", min_value=0, max_value=12, value=8, step=1)
             screen_time = st.number_input("Screen Time (hrs, 0-24)", min_value=0, max_value=24, value=3, step=1)
             stress_level = st.slider("Stress Level (0-10)", min_value=0, max_value=10, value=5)
-            mood = st.selectbox("Mood", ["Happy","Tired","Sad","Anxious","Stressed"])
+            mood = st.selectbox("Mood", ["Happy", "Tired", "Sad", "Anxious", "Stressed"])
             journal = st.text_area("Journal / Notes", value="")
 
             if st.button("Submit Today's Check-in"):
                 score = compute_wellness_score(sleep_hours, screen_time, stress_level)
                 tip = generate_tip(sleep_hours, screen_time, stress_level, mood)
                 entry = {
-                    "username": username,
+                    "username": st.session_state.username,
                     "date": today_ts,
                     "sleep_hours": sleep_hours,
                     "screen_time": screen_time,
@@ -248,84 +298,28 @@ if st.session_state.page == "Today's Check-in":
                 }
                 ok = save_entry(entry)
                 if ok:
-                    # saved new entry
+                    st.success("✅ Today's check-in saved!")
                     st.balloons()
                     play_beep()
-                    st.success("✅ Today's check-in saved!")
                     st.session_state.checkin_done = True
-                    # reload local values to show analysis immediately
-                    data = load_data()
-                    today_entry = data[(data["username"] == username) & (data["date"] == today_ts)]
+                    st.experimental_rerun()
                 else:
-                    # duplicate: show friendly info + existing entry details + balloons
-                    st.warning("⚠ You've already submitted an entry for this date. Showing your previous submission below.")
+                    st.warning("⚠ You've already submitted for this date. Showing your previous entry below.")
                     st.balloons()
-                    # fetch existing entry and show details
-                    data = load_data()
-                    existing = data[(data["username"] == username) & (data["date"] == today_ts)].sort_values("date").iloc[-1]
-                    # show small card summary
-                    st.markdown("*Your existing entry for this date:*")
-                    c1,c2,c3,c4 = st.columns(4)
-                    with c1:
-                        render_card("Stress", existing["stress_level"], color="#FF4B4B", emoji="😣")
-                    with c2:
-                        render_card("Screen", existing["screen_time"], color="#FFA500", emoji="📱")
-                    with c3:
-                        render_card("Sleep", existing["sleep_hours"], color="#1E90FF", emoji="🛌")
-                    with c4:
-                        render_card("Score", existing["wellness_score"], color="#4CAF50", emoji="🌿")
-                    st.markdown(f"*Tip:* {existing.get('tip','')}")
-                    if existing.get("journal",""):
-                        st.markdown(f"*Journal:* {existing.get('journal','')}")
+                    st.experimental_rerun()
 
-        # Show analysis if exists (either newly submitted or previously present)
-        data = load_data()
-        today_entry = data[(data["username"] == username) & (data["date"] == today_ts)]
-        if not today_entry.empty:
-            row = today_entry.iloc[-1]
-            st.subheader("📊 Today's Analysis")
-            c1,c2,c3,c4 = st.columns(4)
-            with c1:
-                render_card("Stress", row["stress_level"], color="#FF4B4B", emoji="😣")
-            with c2:
-                render_card("Screen", row["screen_time"], color="#FFA500", emoji="📱")
-            with c3:
-                render_card("Sleep", row["sleep_hours"], color="#1E90FF", emoji="🛌")
-            with c4:
-                render_card("Score", row["wellness_score"], color="#4CAF50", emoji="🌿")
 
-            # convert to percent style for bar chart
-            stress_pct = (float(row["stress_level"]) / 10.0) * 100
-            screen_pct = (float(row["screen_time"]) / 24.0) * 100
-            sleep_pct = min(100, (float(row["sleep_hours"]) / 8.0) * 100)
-            score_pct = float(row["wellness_score"])  # 0-100
-            metrics = ["Stress (%)","Screen (%)","Sleep (%)","Wellness Score (%)"]
-            vals = [round(stress_pct,1), round(screen_pct,1), round(sleep_pct,1), round(score_pct,1)]
-            cmap = {"Stress (%)":"#FF4B4B","Screen (%)":"#FFA500","Sleep (%)":"#1E90FF","Wellness Score (%)":"#4CAF50"}
-            fig = px.bar(x=metrics, y=vals, text=vals, color=metrics, color_discrete_map=cmap, labels={"y":"Percent (%)"})
-            fig.update_traces(textposition='outside', marker_line_width=0)
-            fig.update_layout(title="📊 Today's Metrics (as %)", yaxis=dict(range=[0,110]), plot_bgcolor="white", paper_bgcolor="white")
-            st.plotly_chart(fig, use_container_width=True)
-
-            st.markdown(f"*Tip (based on your latest entry):* {row.get('tip','')}")
-            tip_note = trend_tip_for_user(df_user)
-            if tip_note:
-                st.info(tip_note)
-
-            if row.get("journal",""):
-                st.markdown(f"*Journal:* {row.get('journal','')}")
-
-# ---------------- Weekly Overview ----------------
+# ---------- WEEKLY OVERVIEW ----------
 elif st.session_state.page == "Weekly Overview":
     st.header("📊 Weekly Overview (Last 7 Days)")
     data = load_data()
-    last7 = get_last_n_days(data, 7, username)
+    last7 = get_last_n_days(data, 7, st.session_state.username)
     if last7.empty:
         st.info("No entries for weekly overview.")
     else:
         for _, r in last7.iterrows():
             st.markdown(f"### {pd.to_datetime(r['date']).strftime('%B %d, %Y')}")
-            a,b,c,d = st.columns(4)
+            a, b, c, d = st.columns(4)
             with a:
                 render_card("Stress", r["stress_level"], color="#FF4B4B", emoji="😣")
             with b:
@@ -335,18 +329,17 @@ elif st.session_state.page == "Weekly Overview":
             with d:
                 render_card("Score", r["wellness_score"], color="#4CAF50", emoji="🌿")
 
-        melt = last7.melt(id_vars="date", value_vars=["stress_level","screen_time","sleep_hours","wellness_score"], var_name="Metric", value_name="Value")
+        melt = last7.melt(id_vars="date", value_vars=["stress_level", "screen_time", "sleep_hours", "wellness_score"],
+                          var_name="Metric", value_name="Value")
         fig = px.line(melt, x=melt["date"].dt.strftime('%b %d'), y="Value", color="Metric", markers=True,
-                      color_discrete_map={"stress_level":"red","screen_time":"orange","sleep_hours":"blue","wellness_score":"green"})
-        fig.update_layout(title="📈 Weekly Trend", yaxis_title="Level / Hours / Score", plot_bgcolor="white", paper_bgcolor="white")
+                      color_discrete_map={"stress_level": "red", "screen_time": "orange",
+                                          "sleep_hours": "blue", "wellness_score": "green"})
+        fig.update_layout(title="📈 Weekly Trend", yaxis_title="Level / Hours / Score",
+                          plot_bgcolor="white", paper_bgcolor="white")
         st.plotly_chart(fig, use_container_width=True)
 
-        summary = weekly_summary_table(last7)
-        if summary is not None and not summary.empty:
-            st.subheader("Weekly Averages by Weekday")
-            st.table(summary)
 
-# ---------------- Leaderboard ----------------
+# ---------- LEADERBOARD ----------
 elif st.session_state.page == "Leaderboard":
     st.header("🏆 Leaderboard")
     data = load_data()
@@ -354,7 +347,7 @@ elif st.session_state.page == "Leaderboard":
         st.info("No data yet.")
     else:
         today = pd.Timestamp(datetime.now().date())
-        board_type = st.selectbox("Daily or Weekly:", ["Daily","Weekly"], key="board_type")
+        board_type = st.selectbox("Daily or Weekly:", ["Daily", "Weekly"], key="board_type")
         if board_type == "Daily":
             df_today = data[data["date"] == today]
             df_rank = df_today.groupby("username", as_index=False)["wellness_score"].mean()
@@ -368,9 +361,10 @@ elif st.session_state.page == "Leaderboard":
         else:
             df_rank = df_rank.sort_values("wellness_score", ascending=False).reset_index(drop=True)
             df_rank["Rank"] = df_rank.index + 1
-            df_rank["Medal"] = df_rank["Rank"].apply(lambda r: ["🥇","🥈","🥉"][r-1] if r<=3 else "")
+            df_rank["Medal"] = df_rank["Rank"].apply(lambda r: ["🥇", "🥈", "🥉"][r - 1] if r <= 3 else "")
             for _, row in df_rank.head(20).iterrows():
-                rc = "gold" if row["Rank"]==1 else ("silver" if row["Rank"]==2 else ("#cd7f32" if row["Rank"]==3 else "white"))
+                rc = "gold" if row["Rank"] == 1 else ("silver" if row["Rank"] == 2 else (
+                    "#cd7f32" if row["Rank"] == 3 else "white"))
                 st.markdown(
                     f"<div style='background:#111; padding:12px; border-radius:10px; margin-bottom:8px; color:white;'>"
                     f"<h4 style='margin:0;'>Rank: <span style='color:{rc}; font-weight:bold'>{row['Rank']}</span> {row['Medal']}</h4>"
@@ -380,7 +374,7 @@ elif st.session_state.page == "Leaderboard":
                 )
 
 
-# ---------------- View Past Entries ----------------
+# ---------- VIEW PAST ENTRIES ----------
 elif st.session_state.page == "View Past Entries":
     st.header("📜 Past Entries (card view)")
     data = load_data()
@@ -388,21 +382,23 @@ elif st.session_state.page == "View Past Entries":
         st.info("No entries.")
     else:
         users = ["All Users"] + sorted(data["username"].dropna().unique().tolist())
-        sel = st.selectbox("Filter by user:", users, index=users.index(username) if username in users else 0)
-        period = st.selectbox("Period:", ["All","Daily","Weekly"], index=0, key="past_period")
+        sel = st.selectbox("Filter by user:", users,
+                           index=users.index(st.session_state.username) if st.session_state.username in users else 0)
+        period = st.selectbox("Period:", ["All", "Daily", "Weekly"], index=0, key="past_period")
         if sel == "All Users":
             display = data.copy()
         else:
             display = data[data["username"] == sel].copy()
+
         today = pd.Timestamp(datetime.now().date())
         if period == "Daily":
             display = display[display["date"] == today]
         elif period == "Weekly":
             week_ago = today - pd.Timedelta(days=6)
             display = display[(display["date"] >= week_ago) & (display["date"] <= today)]
+
         display = display.sort_values(["wellness_score"], ascending=False).reset_index(drop=True)
 
-        # render each row as a dark card (leaderboard-like)
         for _, r in display.iterrows():
             uname = r.get("username", "")
             dstr = pd.to_datetime(r.get("date")).strftime("%b %d, %Y")
@@ -413,81 +409,101 @@ elif st.session_state.page == "View Past Entries":
             mood = r.get("mood", "")
             tip = r.get("tip", "")
             journal = r.get("journal", "")
+            journal_html = f"<div style='margin-top:6px; color:#cfcfcf; font-size:13px;'>Journal: {journal}</div>" if str(
+                journal).strip() else ""
+            html = f"""
+            <div style='background:#0b0b0b; color:white; padding:12px; border-radius:10px; margin-bottom:10px;'>
+              <div style='display:flex; justify-content:space-between; align-items:center;'>
+                <div>
+                  <strong style='font-size:16px'>{uname}</strong>
+                  <div style='font-size:12px; color:#bdbdbd'>{dstr}</div>
+                </div>
+                <div style='text-align:right;'>
+                  <div style='font-size:20px; font-weight:bold; color:#ffd700'>{score}</div>
+                  <div style='font-size:12px; color:#bdbdbd'>Score</div>
+                </div>
+              </div>
+              <div style='margin-top:8px; display:flex; gap:8px;'>
+                <div style='background:#111; padding:8px; border-radius:8px; min-width:80px; text-align:center;'>Stress<br><strong>{stress}</strong></div>
+                <div style='background:#111; padding:8px; border-radius:8px; min-width:80px; text-align:center;'>Screen<br><strong>{screen}h</strong></div>
+                <div style='background:#111; padding:8px; border-radius:8px; min-width:80px; text-align:center;'>Sleep<br><strong>{sleep}h</strong></div>
+                <div style='background:#111; padding:8px; border-radius:8px; min-width:80px; text-align:center;'>Mood<br><strong>{mood}</strong></div>
+              </div>
+              <div style='margin-top:8px; color:#e0e0e0; font-size:13px;'>Tip: {tip if tip else '—'}</div>
+              {journal_html}
+            </div>"""
+            st.markdown(html, unsafe_allow_html=True)
 
-            st.markdown(
-                f"<div style='background:#0b0b0b; color:white; padding:12px; border-radius:10px; margin-bottom:10px;'>"
-                f"<div style='display:flex; justify-content:space-between; align-items:center;'>"
-                f"<div><strong style='font-size:16px'>{uname}</strong><div style='font-size:12px; color:#bdbdbd'>{dstr}</div></div>"
-                f"<div style='text-align:right;'><div style='font-size:20px; font-weight:bold; color:#ffd700'>{score}</div><div style='font-size:12px; color:#bdbdbd'>Score</div></div>"
-                f"</div>"
-                f"<div style='margin-top:8px; display:flex; gap:8px;'>"
-                f"<div style='background:#111; padding:8px; border-radius:8px; min-width:80px; text-align:center;'>Stress<br><strong>{stress}</strong></div>"
-                f"<div style='background:#111; padding:8px; border-radius:8px; min-width:80px; text-align:center;'>Screen<br><strong>{screen}h</strong></div>"
-                f"<div style='background:#111; padding:8px; border-radius:8px; min-width:80px; text-align:center;'>Sleep<br><strong>{sleep}h</strong></div>"
-                f"<div style='background:#111; padding:8px; border-radius:8px; min-width:80px; text-align:center;'>Mood<br><strong>{mood}</strong></div>"
-                f"</div>"
-                f"<div style='margin-top:8px; color:#e0e0e0; font-size:13px;'>Tip: {tip if tip else '—'}</div>"
-                f"{'<div style=\"margin-top:6px; color:#cfcfcf; font-size:13px;\">Journal: '+str(journal)+'</div>' if str(journal).strip() else ''}</div>"
-                unsafe_allow_html=True
-            )
 
 # --------------- Clear My Past Entries ---------------
 elif st.session_state.page == "Clear My Past Entries":
     st.header("🧹 Clear My Past Entries")
-    # Two-step confirmation flow
+
+    # Two-step confirmation flag
     if "confirm_delete" not in st.session_state:
         st.session_state.confirm_delete = False
 
     if not st.session_state.confirm_delete:
         if st.button("⚠ Delete only my entries"):
             st.session_state.confirm_delete = True
-            st.experimental_rerun()  # show confirmation UI immediately
+            st.rerun()  # show confirmation UI immediately
     else:
         st.warning("Are you sure? This will permanently delete ALL entries for your username.")
-        c1, c2 = st.columns([1,1])
+        c1, c2 = st.columns([1, 1])
+
         with c1:
-            if st.button("Yes — Delete my entries"):
+            if st.button("✅ Yes — Delete my entries"):
                 df_all = load_data()
                 before = df_all.shape[0]
                 df_all = df_all[df_all["username"] != username]
                 save_data(df_all)
                 after = df_all.shape[0]
                 deleted = before - after
-                st.success(f"Deleted {deleted} entries for '{username}'.")
+                st.success(f"✅ Deleted {deleted} entries for '{username}'.")
                 st.balloons()
-                # reset confirmation flag and trigger fresh UI
+                time.sleep(2)
                 st.session_state.confirm_delete = False
                 st.rerun()
+
         with c2:
-            if st.button("Cancel"):
+            if st.button("❌ Cancel"):
                 st.session_state.confirm_delete = False
                 st.info("Deletion canceled.")
                 st.rerun()
 
+
 # --------------- Edit / Delete Entries ---------------
 elif st.session_state.page == "Edit / Delete Entries":
     st.header("✏ Edit or Delete Your Entries")
+
     data = load_data()
     df_user = data[data["username"] == username].sort_values("date", ascending=False).reset_index(drop=True)
+
     if df_user.empty:
         st.info("No records to edit for you.")
     else:
         edited = st.data_editor(df_user, num_rows="dynamic")
+
         if st.button("💾 Save my edits"):
             other = data[data["username"] != username]
             merged = pd.concat([other, edited], ignore_index=True)
             merged["date"] = pd.to_datetime(merged["date"], errors="coerce").dt.normalize()
-            merged = merged.drop_duplicates(subset=["username","date"], keep="last")
+            merged = merged.drop_duplicates(subset=["username", "date"], keep="last")
             save_data(merged)
-            st.success("✅ Changes saved.")
+            st.success("✅ Changes saved successfully!")
+            st.balloons()
+            time.sleep(2)  # wait 2 seconds before refresh
             st.rerun()
-        st.caption("To delete a row: remove it in the editor and click 'Save my edits'.")
+
+        st.caption("📝 To delete a row: remove it in the editor and click 'Save my edits'.")
+
 
 # ----------- Switch Account / Exit -----------
 elif st.session_state.page == "Switch Account":
     # clear session fully so next user gets a clean start
     for k in list(st.session_state.keys()):
         del st.session_state[k]
+
     # reinitialize defaults then rerun (ensures login page is shown)
     st.session_state.logged_in = False
     st.session_state.username = None
