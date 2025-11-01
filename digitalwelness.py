@@ -302,11 +302,11 @@ if st.session_state.page == "Today's Check-in":
                     st.balloons()
                     play_beep()
                     st.session_state.checkin_done = True
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.warning("⚠ You've already submitted for this date. Showing your previous entry below.")
                     st.balloons()
-                    st.experimental_rerun()
+                    st.rerun()
 
 
 # ---------- WEEKLY OVERVIEW ----------
